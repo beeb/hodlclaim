@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "This bot will claim your BNB rewards from the HODL token every day automatically"
 authors = ["Valentin Bersier <vbersier@gmail.com>"]
 
+[tool.poetry.scripts]
+claim = 'hodlclaim:main'
+
 [tool.poetry.dependencies]
 python = ">3.7.1,<4.0"
 importlib-metadata = {version="^4.0.1", python="<3.8"}

@@ -1,0 +1,14 @@
+[Unit]
+Description=HODL Claiming Bot
+After=network.target
+
+[Service]
+# Set WorkingDirectory and ExecStart to your file paths accordingly
+# NOTE: %h will be resolved to /home/<username>
+WorkingDirectory=%h/hodlclaim
+ExecStart=%h/hodlclaim/.venv/bin/trade
+Environment="WALLET_PK="
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
