@@ -95,9 +95,14 @@ def claim() -> None:
     logger.info(f'Next claim is for {reward:.3g} BNB')
     next_claim = datetime.fromtimestamp(hodl_contract.functions.nextAvailableClaimDate(account.address).call())
     timediff = next_claim - datetime.now()
-    logger.info(f'Next claim available at {next_claim} so in {timediff.total_seconds() / 3600:.1f} hours')
-    logger.info('Now waiting for that time to come...')
-    scheduler.add_job(make_transaction, 'date', run_date=next_claim + timedelta(seconds=1))
+    if timediff.total_seconds() < 0:
+        logger.info('Claim will be performed now')
+        run_date = datetime.now()
+    else:
+        logger.info(f'Next claim available at {next_claim} so in {timediff.total_seconds() / 3600:.1f} hours')
+        logger.info('Now waiting for that time to come...')
+        run_date = next_claim + timedelta(seconds=1)
+    scheduler.add_job(make_transaction, trigger='date', run_date=run_date)
     scheduler.start()
 
 
