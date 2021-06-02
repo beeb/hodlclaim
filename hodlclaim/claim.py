@@ -14,6 +14,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from eth_account.signers.local import LocalAccount
 from loguru import logger
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 from web3.types import TxParams, Wei
 
 
@@ -48,6 +49,7 @@ logging.basicConfig(handlers=[InterceptHandler()], level=0)
 
 w3_provider = Web3.HTTPProvider(endpoint_uri='https://bsc-dataseed.binance.org:443')
 w3 = Web3(provider=w3_provider)
+w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 account: LocalAccount
 
