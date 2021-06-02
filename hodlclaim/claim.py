@@ -7,13 +7,14 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from eth_account.signers.local import LocalAccount
 from loguru import logger
 from web3 import Web3
-from web3.types import TxParams, Wei, HexBytes
+from web3.types import TxParams, Wei
 
 
 class InterceptHandler(logging.Handler):
@@ -81,14 +82,12 @@ def make_transaction() -> None:
     if receipt['status'] == 0:  # fail
         logger.error(f'Claim transaction failed at tx {txhash}')
         return
-    amount_out = Wei(0)
-    for log in receipt['logs']:
-        if log['topics'][0] != HexBytes('0x76a3a606d310d32750e15a3d246d186b789084096189d51661559b0f97f3bec9'):
-            continue
-        amount_out = Web3.toWei(Web3.toInt(hexstr=log['data']), unit='wei')
+    amount_out = Decimal(0)
+    logs = hodl_contract.events.ClaimBNBSuccessfully().processReceipt(receipt)
+    for log in logs:
+        amount_out = Web3.fromWei(log['args']['ethReceived'], unit='ether')
     logger.info(f'Claim transaction succeeded at tx {txhash}')
-    out_decimal = Web3.fromWei(amount_out, unit='ether')
-    logger.success(f'Claimed {out_decimal:.3g} BNB')
+    logger.success(f'Claimed {amount_out:.3g} BNB')
 
 
 def claim() -> None:
