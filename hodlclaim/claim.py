@@ -9,8 +9,9 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+import time
 
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from eth_account.signers.local import LocalAccount
 from loguru import logger
 from web3 import Web3
@@ -57,10 +58,11 @@ hodl_address = Web3.toChecksumAddress('0x0E3EAF83Ea93Abe756690C62c72284943b96a6B
 hodl_abi = Path('hodlclaim/hodl.abi').open('r').read()
 hodl_contract = w3.eth.contract(address=hodl_address, abi=hodl_abi)
 
-scheduler = BlockingScheduler()
+scheduler = BackgroundScheduler()
 
 
 def make_transaction() -> None:
+    global scheduler
     logger.info('Now trying to claim the reward.')
     func = hodl_contract.functions.claimBNBReward()
     try:
@@ -90,9 +92,14 @@ def make_transaction() -> None:
         amount_out = Web3.fromWei(log['args']['ethReceived'], unit='ether')
     logger.info(f'Claim transaction succeeded at tx {txhash}')
     logger.success(f'Claimed {amount_out:.3g} BNB')
+    scheduler.remove_all_jobs()
 
 
 def claim() -> None:
+    global scheduler
+    if len(scheduler.get_jobs()) > 0:
+        time.sleep(10)
+        return
     reward = Web3.fromWei(hodl_contract.functions.calculateBNBReward(account.address).call(), unit='ether')
     logger.info(f'Next claim is for {reward:.3g} BNB')
     next_claim = datetime.fromtimestamp(hodl_contract.functions.nextAvailableClaimDate(account.address).call())
@@ -104,18 +111,18 @@ def claim() -> None:
         logger.info(f'Next claim available at {next_claim} so in {timediff.total_seconds() / 3600:.1f} hours')
         logger.info('Now waiting for that time to come...')
         run_date = next_claim + timedelta(seconds=1)
-    scheduler.add_job(make_transaction, trigger='date', run_date=run_date)
-    scheduler.start()
+    scheduler.add_job(make_transaction, trigger='date', run_date=run_date, misfire_grace_time=10)
 
 
 def main() -> None:
-    global account
+    global account, scheduler
     pk = os.environ.get('WALLET_PK')
     if pk is None:
         logger.error('No WALLET_PK environment variable.')
         return
     account = w3.eth.account.from_key(pk)
     logger.info(f'Using wallet address {account.address}')
+    scheduler.start()
     try:
         while True:
             claim()
